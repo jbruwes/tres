@@ -52,4 +52,7 @@ script:
 
 <script setup>
 import { TresCanvas } from "@tresjs/core";
+import { provide } from "vue";
+
+provide("url", "http://localhost:8787");
 </script>
