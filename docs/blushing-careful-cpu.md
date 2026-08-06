@@ -45,13 +45,21 @@ script:
 
 <TresCanvas clear-color="#82DBC5" window-size>
 
+:TresPerspectiveCamera{:position="[3,50,5]"}
+
+<OrbitControls />
+
 :RouterView
+
+:TresDirectionalLight{:intensity="2" :position="[3,3,3]"}
+
+:TresAmbientLight{:intensity="1"}
 
 </TresCanvas>
 
-
 <script setup>
 import { TresCanvas } from "@tresjs/core";
+import { OrbitControls } from "@tresjs/cientos";
 import { provide } from "vue";
 
 provide("url", "http://localhost:8787");
