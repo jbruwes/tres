@@ -17,13 +17,17 @@ template: false
 icon: twemoji:page-facing-up
 ---
 
-<TresInstancedMesh v-if="!isLoading && isFinished" ref="instancedMeshRef" :args="[nodes[targetMeshName].geometry, nodes[targetMeshName].material, (2 * size + 1) ** 2]" />
+<TresInstancedMesh  v-for="(asset, key) in assets" :key="key" ref="items" v-if="isEveryFinished && isFinished" :args="[gltf[asset].nodes[asset].geometry, gltf[asset].nodes[asset].material, (2 * size + 1) ** 2]" />
+
+:TresAxesHelper
+
+:TresGridHelper
 
 <script setup lang="ts">
-import { inject, watch, useTemplateRef } from "vue";
+import { inject, watch, useTemplateRef, reactive } from "vue";
 import { useGLTF } from "@tresjs/cientos";
 import { InstancedMesh, Object3D, Vector3 } from "three";
-import { useFetch } from "@vueuse/core";
+import { useFetch, useArrayEvery } from "@vueuse/core";
 
 // https://observablehq.com/@jrus/hexround
 const axial_round = (x, y) => {
@@ -34,33 +38,45 @@ const axial_round = (x, y) => {
   return [xgrid + dx, ygrid + dy];
 };
 
-// https://www.redblobgames.com/grids/hexagons/#hex-to-pixel-axial
-//const pointy_hex_to_pixel = ([q, y, r]) => [Math.sqrt(3) * (q + 1 / 2 * r), y, 3 / 2 * r];
-const pointy_hex_to_pixel = ([q, y, r]) => [Math.sqrt(3) * (q + 1 / 2 * (Math.abs(r) % 2)), y, 3 / 2 * r];
-// https://www.redblobgames.com/grids/hexagons/#pixel-to-hex-axial
-//const pixel_to_pointy_hex = ([x, z]) => axial_round((Math.sqrt(3) * x - z) / 3, 2 / 3 * z);
-const pixel_to_pointy_hex = ([x, z]) => axial_round((Math.sqrt(3) * x - Math.abs(z) % 2) / 3, 2 / 3 * z);
 
+const assets = ["hex_grass", "hex_water"],
+  gltf = reactive(Object.fromEntries(assets.map((asset) => [asset, useGLTF(`uploads/tiles/base/${asset}.gltf`)]))),
+  isEveryFinished = useArrayEvery(Object.values(gltf), ({ isLoading }) => !isLoading),
+  refs = useTemplateRef<InstancedMesh[]>("items");
 
 const size = 10,
   url = inject("url"),
-  { isFinished, data } = useFetch(`${url}/terrain/${size}`),
-  { nodes, isLoading } = useGLTF("uploads/tiles/base/hex_grass.gltf"),
-  instancedMeshRef = useTemplateRef<InstancedMesh>("instancedMeshRef"),
-  targetMeshName = "hex_grass";
+  { isFinished, data } = useFetch(`${url}/terrain/${size}`).json();
 
-watch(instancedMeshRef, (mesh) => {
-  const dummy = new Object3D(),
-    matrix = JSON.parse(data.value as string);
-  let i = 0;
-  for (let x = -size; x < size + 1; x++)
-    for (let z = -size; z < size + 1; z++) {
-      dummy.position.copy(new Vector3(...pointy_hex_to_pixel([x, (matrix[x][z] - 0.07) * 5, z])));
+watch(refs, (meshes) => {
+
+  const scale = Math.sqrt(3) / 2
+  const count = Array(assets.length).fill(0);
+  const dummy = new Object3D();
+  dummy.scale.set(scale, 1, scale);
+
+  // https://www.redblobgames.com/grids/hexagons/#hex-to-pixel-axial
+  //const pointy_hex_to_pixel = ([q, y, r]) => [Math.sqrt(3) * (q + 1 / 2 * r), y, 3 / 2 * r];
+  const pointy_hex_to_pixel = ([q, y, r]) => [Math.sqrt(3) * (q + 1 / 2 * (Math.abs(r) % 2)), y, 3 / 2 * r];
+  // https://www.redblobgames.com/grids/hexagons/#pixel-to-hex-axial
+  //const pixel_to_pointy_hex = ([x, z]) => axial_round((Math.sqrt(3) * x - z) / 3, 2 / 3 * z);
+  const pixel_to_pointy_hex = ([x, z]) => axial_round((Math.sqrt(3) * x - Math.abs(z) % 2) / 3, 2 / 3 * z);
+
+  for (let q = -size; q < size + 1; q++)
+    for (let r = -size; r < size + 1; r++) {
+      const { y, type } = data.value[q][r];
+      const index = assets.indexOf(type);
+      dummy.position.copy(new Vector3(...pointy_hex_to_pixel([q, y < 0 ? 0 : y, r])));
       //   dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0)
       dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      i++;
+      meshes[index].setMatrixAt(count[index], dummy.matrix);
+      count[index]++;
     }
-  mesh.instanceMatrix.needsUpdate = true
+
+  meshes.forEach((mesh, i) => {
+    mesh.count = count[i];
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
 }, { once: true })
 </script>
