@@ -27,6 +27,7 @@ script:
           "@vueuse/shared": "https://cdn.jsdelivr.net/npm/@vueuse/shared@14.3/dist/index.js",
           "@pmndrs/pointer-events": "https://cdn.jsdelivr.net/npm/@pmndrs/pointer-events@6.6/dist/index.js",
           "@vue/devtools-api": "https://cdn.jsdelivr.net/npm/@vue/devtools-api@8.2/dist/vue-devtools-api.esm-browser.js",
+          "honeycomb-grid": "https://cdn.jsdelivr.net/npm/honeycomb-grid@4.1/dist/honeycomb-grid.mjs",
           "camera-controls": "https://cdn.jsdelivr.net/npm/camera-controls@3.1/dist/camera-controls.module.js",
           "three-stdlib": "https://cdn.jsdelivr.net/npm/three-stdlib@2.36/index.js",
           "radashi": "https://cdn.jsdelivr.net/npm/radashi@12.9/dist/radashi.js",
@@ -43,17 +44,17 @@ script:
       }
 ---
 
-<TresCanvas clear-color="#82DBC5" window-size>
+<TresCanvas window-size>
 
-:TresPerspectiveCamera{:position="[3,50,5]"}
+:TresPerspectiveCamera{:position="[30,100,50]"}
 
 <OrbitControls />
 
 :RouterView
 
-:TresDirectionalLight{:intensity="2" :position="[3,3,3]"}
+:TresDirectionalLight{:position="[1,1,1]"}
 
-:TresAmbientLight{:intensity="1"}
+:TresAmbientLight
 
 </TresCanvas>
 
