@@ -34,11 +34,11 @@ import { defineHex, hexToPoint, Grid, rectangle } from "honeycomb-grid";
 
 const [xRadius, yRadius] = Array(2).fill(2 / Math.sqrt(3)),
   dimensions = { xRadius, yRadius },
-  assets = ["hex_grass", "hex_water"],
+  assets = ["hex_grass", "hex_water", "hex_grass_bottom", "hex_grass_sloped_low", "hex_grass_sloped_high"],
   gltf = reactive(Object.fromEntries(assets.map((asset) => [asset, useGLTF(`uploads/tiles/base/${asset}.gltf`)]))),
   isEveryFinished = useArrayEvery(Object.values(gltf), ({ isLoading }) => !isLoading),
   refs = useTemplateRef<InstancedMesh[]>("items"),
-  size = 50,
+  size = 30,
   halfSize = Math.floor(size / 2),
   doubleSize = size * 2 + 1,
   url = inject("url"),
@@ -51,14 +51,26 @@ watch(refs, (meshes) => {
     dummy = new Object3D();
 
   grid.forEach((hex) => {
-    const { y, type } = data.value[hex.q + halfSize + size][hex.r + size],
+    const { y, type, direction } = data.value[hex.q + halfSize + size][hex.r + size],
       index = assets.indexOf(type),
       { x, y: z } = hexToPoint(hex);
 
-    dummy.position.set(x, y < 0 ? 0 : y, z);
+    dummy.scale.set(1, 1, 1);
+    dummy.position.set(x, y < 0 ? 0 : y / 2, z);
+    dummy.rotation.set(0, 2 * Math.PI * ((5 - direction + Math.floor(direction / 4) + 6) % 6) / 6, 0);
     dummy.updateMatrix();
     meshes[index].setMatrixAt(count[index], dummy.matrix);
     count[index]++;
+
+    // if (y > 0) {
+    //   const bottomIndex = assets.indexOf("hex_grass_bottom");
+    //   dummy.position.set(x, y - 1, z);
+    //   dummy.scale.set(1, y, 1);
+    //   dummy.updateMatrix();
+    //   meshes[bottomIndex].setMatrixAt(count[bottomIndex], dummy.matrix);
+    //   count[bottomIndex]++;
+    // }
+
   });
 
   meshes.forEach((mesh, i) => {
