@@ -19,7 +19,7 @@ icon: twemoji:page-facing-up
 
 <Sky :rayleigh="1" />
 
-<TresInstancedMesh  v-for="(asset, key) in assets" :key="key" ref="items" v-if="isEveryFinished && isFinished" :args="[gltf[asset].nodes[asset].geometry, gltf[asset].nodes[asset].material, doubleSize ** 2]" />
+<TresInstancedMesh  v-for="[, , name] in assets" :key="name" ref="items" v-if="isEveryFinished && isFinished" :args="[gltf[name].nodes[name].geometry, gltf[name].nodes[name].material, doubleSize ** 2]" />
 
 :TresAxesHelper
 
@@ -34,16 +34,27 @@ import { defineHex, hexToPoint, Grid, rectangle } from "honeycomb-grid";
 
 const [xRadius, yRadius] = Array(2).fill(2 / Math.sqrt(3)),
   dimensions = { xRadius, yRadius },
-  assets = ["hex_grass", "hex_water", "hex_grass_bottom", "hex_grass_sloped_low", "hex_grass_sloped_high"],
-  gltf = reactive(Object.fromEntries(assets.map((asset) => [asset, useGLTF(`uploads/tiles/base/${asset}.gltf`)]))),
+  assets = [
+    ["tiles", "base", "hex_grass"],
+    ["tiles", "base", "hex_water"],
+    ["tiles", "base", "hex_grass_bottom"],
+    ["tiles", "base", "hex_grass_sloped_low"],
+    ["tiles", "base", "hex_grass_sloped_high"],
+    ["tiles", "coast", "hex_coast_A"],
+    ["tiles", "coast", "hex_coast_B"],
+    ["tiles", "coast", "hex_coast_C"],
+    ["tiles", "coast", "hex_coast_D"],
+  ],
+  gltf = reactive(Object.fromEntries(assets.map((asset) => [asset[2], useGLTF(`uploads/${asset.join("/")}.gltf`)]))),
   isEveryFinished = useArrayEvery(Object.values(gltf), ({ isLoading }) => !isLoading),
   refs = useTemplateRef<InstancedMesh[]>("items"),
-  size = 30,
+  size = 50,
   halfSize = Math.floor(size / 2),
   doubleSize = size * 2 + 1,
   url = inject("url"),
   { isFinished, data } = useFetch(`${url}/terrain/${size}`).json(),
-  grid = new Grid(defineHex({ dimensions }), rectangle({ width: doubleSize, height: doubleSize, start: { q: -halfSize, r: -size } }));
+  grid = new Grid(defineHex({ dimensions }), rectangle({ width: doubleSize, height: doubleSize, start: { q: -halfSize, r: -size } })),
+  direction2radians = (direction: number) => 2 * Math.PI * ((5 - direction + Math.floor(direction / 4) + 6) % 6) / 6;
 
 watch(refs, (meshes) => {
 
@@ -52,24 +63,25 @@ watch(refs, (meshes) => {
 
   grid.forEach((hex) => {
     const { y, type, direction } = data.value[hex.q + halfSize + size][hex.r + size],
-      index = assets.indexOf(type),
+      index = assets.findIndex(([, , name]) => name === type),
       { x, y: z } = hexToPoint(hex);
 
     dummy.scale.set(1, 1, 1);
     dummy.position.set(x, y < 0 ? 0 : y / 2, z);
-    dummy.rotation.set(0, 2 * Math.PI * ((5 - direction + Math.floor(direction / 4) + 6) % 6) / 6, 0);
+    dummy.rotation.set(0, direction2radians(direction), 0);
     dummy.updateMatrix();
     meshes[index].setMatrixAt(count[index], dummy.matrix);
     count[index]++;
 
-    // if (y > 0) {
-    //   const bottomIndex = assets.indexOf("hex_grass_bottom");
-    //   dummy.position.set(x, y - 1, z);
-    //   dummy.scale.set(1, y, 1);
-    //   dummy.updateMatrix();
-    //   meshes[bottomIndex].setMatrixAt(count[bottomIndex], dummy.matrix);
-    //   count[bottomIndex]++;
-    // }
+    if (y > 0) {
+      const bottomIndex = assets.findIndex(([, , name]) => name === "hex_grass_bottom");
+      dummy.scale.set(1, y / 2, 1);
+      dummy.position.set(x, y / 2 - 1, z);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      meshes[bottomIndex].setMatrixAt(count[bottomIndex], dummy.matrix);
+      count[bottomIndex]++;
+    }
 
   });
 
